@@ -16,7 +16,7 @@ dropboxconfig=".dropbox_uploader"
 
 # A few checks first...
 test -e /home/pi/.dropbox_uploader || $DIR/./dropbox_uploader.sh
-test -e ! $DIR/temp/.gitignore || find $DIR -name .gitignore rm -f {} \;
+test -e !$DIR/temp/.gitignore || find $DIR -name .gitignore -exec rm -f {} \;
 
 # Stop emonhub
 sudo service emonhub stop
