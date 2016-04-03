@@ -14,8 +14,9 @@ datadir="/var/lib" #path to emoncms data directories
 date=$(date +"%Y-%m-%d_%H%M%S")
 dropboxconfig=".dropbox_uploader"
 
-# Check if first run...
+# A few checks first...
 test -e /home/pi/.dropbox_uploader || $DIR/./dropbox_uploader.sh
+test -e ! $DIR/temp/.gitignore || find $DIR -name .gitignore rm -f {} \;
 
 # Stop emonhub
 sudo service emonhub stop
