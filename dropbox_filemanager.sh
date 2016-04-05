@@ -1,22 +1,36 @@
 #!/bin/bash
 
+########## USER CONFIGS ##########
+
 # Emoncms Database Credentials
-dbuser="emoncms" # Database user name - default is emoncms
-dbpass=""        # Database user password
-dbname="emoncms" # Database name - default is emoncms
+dbuser="emoncms"   # Database user name - default is emoncms
+dbpass=""          # Database user password
+dbname="emoncms"   # Database name - default is emoncms
+datadir="/var/lib" # path to emoncms data directories
 
 # Number of days of archives to store
-store=7
+store="7" # days
 
-# General Config
+# Create archive backups of node-red flows, configs and credentials
+nodered="N" # options Y or N
+
+########## END OF USER CONFIGS ##########
+
+# General Configs
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-datadir="/var/lib" #path to emoncms data directories
 date=$(date +"%Y-%m-%d_%H%M%S")
 dropboxconfig=".dropbox_uploader"
 
 # A few checks first...
 test -e /home/pi/.dropbox_uploader || $DIR/./dropbox_uploader.sh
 test -e !$DIR/temp/.gitignore || find $DIR -name .gitignore -exec rm -f {} \;
+
+# Archive node-red
+if [ -d /home/pi/.node-red -a $nodered = "Y" ];
+then
+mkdir $DIR/temp/node-red
+cp -pr /home/pi/.node-red $DIR/temp/node-red
+fi
 
 # Stop emonhub
 sudo service emonhub stop

@@ -1,6 +1,7 @@
 # dropbox-archive
 The aim of these scripts are to;
 + copy your emoncms feed data folders and obtain a dump of your emoncms MYSQL database
++ option to backup node-red flows, credentials and configuration settings
 + create a datestamped tar.gz compressed archive of the data
 + upload the archive to your Dropbox cloud account
 + each time the script is run, it will delete both local and cloud archives which are older that 7 days (can be changed in script)
@@ -8,7 +9,7 @@ The aim of these scripts are to;
 ### Installation and Setup  
 `git clone https://github.com/Paul-Reed/dropbox-archive.git`  
 `cd dropbox-archive && nano dropbox_filemanager.sh`  
-Edit emoncms database credentials, save & exit.
+Ensure that your emoncms database credentials are added where indicated, and if you also want to back up your node-red flows, credential and settings, select (Y)es in the configuration,  save & exit.
 
 Run the script  
 `./dropbox_filemanager.sh`  
