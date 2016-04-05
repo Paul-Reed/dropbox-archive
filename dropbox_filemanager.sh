@@ -48,7 +48,7 @@ mysqldump --lock-tables --user=$dbuser --password=$dbpass $dbname > $DIR/temp/my
 sudo service emonhub start
 
 # Prepare emoncms data archive and delete original
-tar cf - $DIR/temp/ | gzip > $DIR/emoncms-backup/$dbname-$date.tar.gz
+tar -czf $DIR/emoncms-backup/$dbname-$date.tar.gz -C $DIR/temp/ .
 rm -rf $DIR/temp/*
 
 # Upload the file to Dropbox
