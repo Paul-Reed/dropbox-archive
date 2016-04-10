@@ -41,7 +41,7 @@
     mkdir("backups", 0777, true);
     }
 
-    $date = date("d-m-Y_his");
+    $date = date("d-m-Y_H:i");
 
     //Set up emoncms  backup directory array
 
@@ -66,6 +66,7 @@ print_r(array_values($engines));
     $redis = false;
 
     // Fetch remote server feed list
+
     $feeds = file_get_contents($remote_server."/feed/list.json?apikey=$remote_apikey");
     $feeds = json_decode($feeds);
 
@@ -128,19 +129,18 @@ print_r(array_values($engines));
     }
 
     // Create archive of temp_data in backups directory
+
     try {
     //make sure the script has enough time to run (600 seconds  = 10 minutes)
     ini_set('max_execution_time', '600');
     ini_set('set_time_limit', '0');
-
     $target = isset($_GET["targetname"]) ? $_GET["targetname"] : 'backups/archive.tar';
-    $dir = isset($_GET["dir"]) ? $_GET["dir"] : "$tdir/."; //defaults to all in current dir
+    $dir = isset($_GET["dir"]) ? $_GET["dir"] : "$tdir/."; //source is temp dir
     //setup phar
     $phar = new PharData($target);
     $phar->buildFromDirectory(dirname(__FILE__) . '/'.$dir);
-    echo "Now compressing archive, this will take a minute or so...\n";
+    echo "Now compressing archive, this will take a while...\n";
     file_put_contents("backups/archive_$date.tar.gz" , gzencode(file_get_contents('backups/archive.tar')));
-    // $phar->compress(Phar::GZ);
     unlink('backups/archive.tar');
     } catch (Exception $e) {
     // handle errors
@@ -148,3 +148,31 @@ print_r(array_values($engines));
     echo $e->getMessage();
     }
 
+    // Remove temporary directory and contents 
+
+    $it = new RecursiveDirectoryIterator($tdir, RecursiveDirectoryIterator::SKIP_DOTS);
+    $files = new RecursiveIteratorIterator($it,
+             RecursiveIteratorIterator::CHILD_FIRST);
+    foreach($files as $file) {
+    if ($file->isDir()){
+        rmdir($file->getRealPath());
+    } else {
+        unlink($file->getRealPath());
+      }
+    }
+    rmdir($tdir);
+
+    // Remove archives older than x days from backups directory
+
+    if (file_exists("backups")) {
+    foreach (new DirectoryIterator("backups") as $fileInfo) {
+        if ($fileInfo->isDot()) {
+        continue;
+        }
+// Change time calcs after testing...
+// if (time() - $fileInfo->getCTime() >= "$store"*60*60*24) {
+        if (time() - $fileInfo->getCTime() >= "$store"*60) {
+            unlink($fileInfo->getRealPath());
+        }
+      }
+    }
