@@ -22,7 +22,9 @@
 
     // Create directory structures
 
-    $tdir = "temp_data";
+    $cdir = realpath(dirname(__FILE__)); // Current File Directory
+    $tdir = "temp_data";                 // Temporary data Directory
+    chdir ("$cdir");                     // Move current working directory
 
     $Createdir = array(
       "$tdir/phpfina",
@@ -59,8 +61,6 @@
             'datadir'=> "$tdir/timestore/"
          )
     );
-
-print_r(array_values($engines));
 
     $mysqli = false;
     $redis = false;
@@ -109,12 +109,14 @@ print_r(array_values($engines));
 
     // Dump MYSQL data
 
+    echo "Dumping MYSQL data\n";
     $backup_file = $dbname . '_' . date("d-m-Y_His") . '.sql';
     exec("mysqldump --lock-tables -u $dbuser -p$dbpass ". "$dbname > $tdir/mysql/$backup_file");
 
     // Backup nodered
 
     if (file_exists("/home/pi/.node-red") && ($nodered == "Y")) {
+    echo "Backing up node-red data\n";
     foreach (
     $iterator = new \RecursiveIteratorIterator(
     new \RecursiveDirectoryIterator($NRdir, \RecursiveDirectoryIterator::SKIP_DOTS),
@@ -170,9 +172,20 @@ print_r(array_values($engines));
         continue;
         }
 // Change time calcs after testing...
-// if (time() - $fileInfo->getCTime() >= "$store"*60*60*24) {
+     // if (time() - $fileInfo->getCTime() >= "$store"*60*60*24) {
         if (time() - $fileInfo->getCTime() >= "$store"*60) {
+           echo "Deleting expired archive - $fileInfo\n";
             unlink($fileInfo->getRealPath());
         }
       }
     }
+
+    // Upload archive to Dropbox
+
+    echo "Uploading new archive to Dropbox\n";
+    $output = exec("lib/./dropbox_uploader.sh -sf /home/pi/.dropbox_uploader upload backups/ /");
+
+    // Delete cloud expired archives
+
+    $output = exec("lib/./sync.sh");
+
