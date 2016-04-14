@@ -20,11 +20,25 @@
     include "lib/phpfina.php";
     include "lib/inputs.php";
 
-    // Create directory structures
+    // Locate where script is installed
 
     $cdir = realpath(dirname(__FILE__)); // Current File Directory
     $tdir = "temp_data";                 // Temporary data Directory
     chdir ("$cdir");                     // Move current working directory
+
+    // On first run enter dropbox configuration
+
+    if (!file_exists("/home/pi/.dropbox_uploader")) {
+    echo "\n\n\n";
+    echo "Before using this script, it is necessary to\n";
+    echo "configure your Dropbox API to allow backups\n";
+    echo "to be uploaded.\n";
+    echo "To configure the script, run;\n\n";
+    echo "$cdir/lib/./dropbox_uploader.sh\n\n";
+    echo "and follow the prompts.\n\n\n";
+    die;
+    }
+
 
     $Createdir = array(
       "$tdir/phpfina",
