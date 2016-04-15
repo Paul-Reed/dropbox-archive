@@ -39,6 +39,7 @@
     die;
     }
 
+    // Create temp Directory structure
 
     $Createdir = array(
       "$tdir/phpfina",
@@ -81,7 +82,7 @@
 
     // Fetch remote server feed list
 
-    $feeds = file_get_contents($remote_server."/feed/list.json?apikey=$remote_apikey");
+    $feeds = file_get_contents($emoncms_server."/feed/list.json?apikey=$emoncms_apikey");
     $feeds = json_decode($feeds);
 
     $number_of_feeds = count($feeds);
@@ -96,27 +97,27 @@
     {
 
         if ($feed->engine==0 && $mysqli) {
-            import_mysql($feed,$remote_server,$remote_apikey,$mysqli);
+            import_mysql($feed,$emoncms_server,$emoncms_apikey,$mysqli);
         }
 
         if ($feed->engine==1 && $feed->datatype==1) {
-            import_phptimestore($feed->id,$remote_server,$remote_apikey,$engines['phptimestore']['datadir']);
+            import_phptimestore($feed->id,$emoncms_server,$emoncms_apikey,$engines['phptimestore']['datadir']);
         }
 
         if ($feed->engine==2) {
-            import_phptimeseries($feed->id,$remote_server,$remote_apikey,$engines['phptimeseries']['datadir']);
+            import_phptimeseries($feed->id,$emoncms_server,$emoncms_apikey,$engines['phptimeseries']['datadir']);
         }
 
         if ($feed->engine==5) {
-            import_phpfina($feed->id,$remote_server,$remote_apikey,$engines['phpfina']['datadir']);
+            import_phpfina($feed->id,$emoncms_server,$emoncms_apikey,$engines['phpfina']['datadir']);
         }
 
         if ($feed->engine==6) {
-            import_phpfiwa($feed->id,$remote_server,$remote_apikey,$engines['phpfiwa']['datadir']);
+            import_phpfiwa($feed->id,$emoncms_server,$emoncms_apikey,$engines['phpfiwa']['datadir']);
         }
 
         if ($feed->engine==4 && $feed->datatype==1) {
-            import_phptimestore($feed->id,$remote_server,$remote_apikey,$engines['phptimestore']['datadir']);
+            import_phptimestore($feed->id,$emoncms_server,$emoncms_apikey,$engines['phptimestore']['datadir']);
         }
     }
 
@@ -155,7 +156,7 @@
     //setup phar
     $phar = new PharData($target);
     $phar->buildFromDirectory(dirname(__FILE__) . '/'.$dir);
-    echo "Now compressing archive, this will take a while...\n";
+    echo "Now compressing archive...\n";
     file_put_contents("backups/archive_$date.tar.gz" , gzencode(file_get_contents('backups/archive.tar')));
     unlink('backups/archive.tar');
     } catch (Exception $e) {
@@ -164,7 +165,7 @@
     echo $e->getMessage();
     }
 
-    // Remove temporary directory and contents 
+    // Remove temporary directory and contents
 
     $it = new RecursiveDirectoryIterator($tdir, RecursiveDirectoryIterator::SKIP_DOTS);
     $files = new RecursiveIteratorIterator($it,
@@ -181,13 +182,13 @@
     // Remove archives older than x days from backups directory
 
     if (file_exists("backups")) {
+    echo "Checking for expired archives...\n";
     foreach (new DirectoryIterator("backups") as $fileInfo) {
         if ($fileInfo->isDot()) {
         continue;
         }
-// Change time calcs after testing...
-     // if (time() - $fileInfo->getCTime() >= "$store"*60*60*24) {
-        if (time() - $fileInfo->getCTime() >= "$store"*60) {
+
+        if (time() - $fileInfo->getCTime() >= "$store"*60*60*24) {
            echo "Deleting expired archive - $fileInfo\n";
             unlink($fileInfo->getRealPath());
         }
@@ -196,7 +197,7 @@
 
     // Upload archive to Dropbox
 
-    echo "Uploading new archive to Dropbox\n";
+    echo "Uploading new archive to Dropbox, this may take a while...\n";
     $output = exec("lib/./dropbox_uploader.sh -sf /home/pi/.dropbox_uploader upload backups/ /");
 
     // Delete cloud expired archives

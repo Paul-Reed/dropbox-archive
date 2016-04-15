@@ -17,7 +17,7 @@ Unlike a dedicated emoncms app, this module can be installed anywhere on your pi
 `nano config.php`  
 *Note* - ensure that the $emoncms-server setting contains your 'private' (local) IP address, as the module will use the emoncms API to replicate your data directories.  
 
-Run the script  
+### Run the script  
 `sudo php backup.php`  
 The first time that you run the script, it will prompt you to setup your Dropbox API, just follow the onscreen prompts.  
 *- The most common error cause is not copying the authorization URL accurately due to the wrong interpritation of numbers and letters such as O (letter) 0 (number) & 1 (number) I (letter).*  
@@ -25,6 +25,6 @@ This only needs to be done once, and when completed, run the backup.php script a
 
 Running the script subsequently, will add further archives to Dropbox, which can be done either manually, by Cron, by node-red, or by other means.
 
-By default, the script will retain 7 days of backups, although that can be changed in the config file, archives older than 7 days are automatically deleted both locally and remotely in Dropbox.
+By default, the script will retain 7 days of backups, although that can be changed in the config file, archives older than that criteria are automatically deleted both locally and remotely in Dropbox when the script in run again.
 
 *Many thanks to Andrea Fabrizi for his brilliant Dropbox_uploader script.*

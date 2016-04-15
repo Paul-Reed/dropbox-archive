@@ -7,8 +7,8 @@
     Part of the OpenEnergyMonitor project: http://openenergymonitor.org
     */
 
-    $remote_server = "http://192.168.1.10/emoncms";
-    $remote_apikey = ""; // Needs to be emoncms write API key
+    $emoncms_server = "http://192.168.1.10/emoncms"; //emoncms local IP address
+    $emoncms_apikey = ""; // Needs to be emoncms write API key
     $dbuser = "emoncms";    // Database user name - default is emoncms
     $dbpass = ""; // Database user password
     $dbname = "emoncms";    // Database name - default is emoncms

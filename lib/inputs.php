@@ -1,8 +1,8 @@
 <?php
 
-function backup_inputs($mysqli,$remote_server,$remote_apikey,$userid)
+function backup_inputs($mysqli,$emoncms_server,$emoncms_apikey,$userid)
 {
-  $inputs = file_get_contents($remote_server."/input/list.json?apikey=$remote_apikey");
+  $inputs = file_get_contents($emoncms_server."/input/list.json?apikey=$emoncms_apikey");
   $inputs = json_decode($inputs);
   
   foreach ($inputs as $input)
