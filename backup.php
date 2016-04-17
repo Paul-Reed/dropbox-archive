@@ -58,7 +58,7 @@
     mkdir("backups", 0777, true);
     }
 
-    $date = date("d-m-Y_H:i");
+    $date = date("d-m-Y_Hi");
 
     //Set up emoncms  backup directory array
 
@@ -130,7 +130,7 @@
 
     // Backup nodered
 
-    if (file_exists("/home/pi/.node-red") && ($nodered == "Y")) {
+    if (file_exists("$NRdir") && ($nodered == "Y")) {
     echo "Backing up node-red data\n";
     foreach (
     $iterator = new \RecursiveIteratorIterator(

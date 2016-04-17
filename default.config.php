@@ -15,5 +15,6 @@
     $datadir = "/var/lib";  // path to emoncms data directories
     $store = "7"; // Number of days of archives to store
     // Create archive backups of node-red flows, configs and credentials
-    $nodered = "Y"; // options Y or N
+    $nodered = "N"; // options Y or N
     $NRdir = "/home/pi/.node-red"; //Node-red backup dir, default is /home/pi/.node-red
+    // but will be different for an emonpi
