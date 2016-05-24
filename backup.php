@@ -188,19 +188,19 @@
         continue;
         }
 
-        if (time() - $fileInfo->getCTime() >= "$store"*60*60*24) {
+        if (time() - $fileInfo->getCTime() >= ("$store"*60*60*24)-(60*60)) {
            echo "Deleting expired archive - $fileInfo\n";
             unlink($fileInfo->getRealPath());
         }
       }
     }
 
+    // Delete cloud expired archives
+
+    $output = exec("lib/./sync.sh");
+
     // Upload archive to Dropbox
 
     echo "Uploading new archive to Dropbox, this may take a while...\n";
     $output = exec("lib/./dropbox_uploader.sh -sf /home/pi/.dropbox_uploader upload backups/ /");
-
-    // Delete cloud expired archives
-
-    $output = exec("lib/./sync.sh");
 
