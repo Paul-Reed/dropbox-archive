@@ -182,7 +182,7 @@
     // Remove archives older than x days from backups directory
 
     if (file_exists("backups")) {
-    echo "Checking for expired archives...\n";
+    echo "\n..Checking for expired archives...\n";
     foreach (new DirectoryIterator("backups") as $fileInfo) {
         if ($fileInfo->isDot()) {
         continue;
