@@ -2,12 +2,12 @@
 <?php
 
 $fh=fopen("settings.conf", "r");
+$pattern='/^(\w+)="([\w\/\.\:]+)"/';
 while ($line=fgets($fh, 80)) {
-  if (preg_match('/^[a-zA-Z_]+=("[a-zA-Z:.0-9_\/]+")/', $line)) {
-  //  $line_a=explode("=", $line);
-    $line_a=array_map('trim',explode("=", $line));
-    $conf[$line_a[0]]=trim($line_a[1], '"');
-  }
+
+if (preg_match($pattern, $line, $match)) {
+     $conf[$match[1]]=$match[2];
+     }
 }
 
 print_r($conf);

@@ -1,6 +1,8 @@
 #!/bin/bash
-eval `egrep '^[a-z]+=("[a-z0-9]+"|[0-9]+)$' settings.conf`
-
-printf "dbus=%s\nbar=%s\nsomeint=%s\n\n" "$dbuser" "$dbpass" "$store"
+eval `egrep '^([a-zA-Z_]+)="(.*)"' settings.conf`
 
 echo "$dbuser"
+echo "$emoncms_server"
+echo "$NRdir"
+echo "$store"
+
