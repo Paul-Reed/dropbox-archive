@@ -19,7 +19,13 @@
     include "lib/phpfina.php";
     include "lib/inputs.php";
 
+    // Locate where script is installed
+
+    $cdir = realpath(dirname(__FILE__)); // Current File Directory
+    chdir ("$cdir");                     // Move current working directory
+
     // Import user settings
+
     $fh=fopen("settings.conf", "r");
     $pattern='/^(\w+)="([\w\/\.\-\:]+)"/';
     while ($line=fgets($fh, 80)) {
@@ -30,12 +36,6 @@
     }
     print_r($conf);
     extract($conf);
-
-    // Locate where script is installed
-
-    $cdir = realpath(dirname(__FILE__)); // Current File Directory
-    $tdir = "temp_data";                 // Temporary data Directory
-    chdir ("$cdir");                     // Move current working directory
 
     // On first run enter dropbox configuration
 
@@ -130,23 +130,6 @@
         if ($feed->engine==4 && $feed->datatype==1) {
             import_phptimestore($feed->id,$emoncms_server,$emoncmsapikey,$engines['phptimestore']['datadir']);
         }
-    }
-
-    // Backup nodered
-
-    if (file_exists("$NRdir") && ($nodered == "Y")) {
-    echo "Backing up node-red data\n";
-    foreach (
-    $iterator = new \RecursiveIteratorIterator(
-    new \RecursiveDirectoryIterator($NRdir, \RecursiveDirectoryIterator::SKIP_DOTS),
-    \RecursiveIteratorIterator::SELF_FIRST) as $item
-    ) {
-    if ($item->isDir()) {
-    mkdir("$tdir/nodered" . DIRECTORY_SEPARATOR . $iterator->getSubPathName());
-    } else {
-    copy($item, "$tdir/nodered" . DIRECTORY_SEPARATOR . $iterator->getSubPathName());
-        }
-      }
     }
 
     // Run bash script
