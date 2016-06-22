@@ -2,3 +2,4 @@ config.php
 settings.conf
 temp_data
 backups
+lib/sync.sh.save
