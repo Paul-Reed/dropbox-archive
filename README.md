@@ -11,10 +11,10 @@ The aims of this module are to;
 Unlike a dedicated emoncms app, this module can be installed anywhere on your pi, and not necessarily within your emoncms directory.  
 1) Install the module via git  
 `git clone https://github.com/Paul-Reed/dropbox-archive.git`  
-2) Make a copy of default.config.php and call it config.php  
-`cd dropbox-archive && cp default.config.php config.php`  
-3) Add your emoncms **Write** API key, your MYSQL database details, and other options to config.php  
-`nano config.php`  
+2) Make a copy of default.settings.conf and call it settings.conf  
+`cd dropbox-archive && cp default.settings.conf settings.conf`  
+3) Add your emoncms **Write** API key, your MYSQL database details, and other options to settings.conf  
+`nano settings.conf`  
 *Note* - ensure that the $emoncms-server setting contains your 'private' (local) IP address, as the module will use the emoncms API to replicate your data directories.  
 
 ### Run the script  
@@ -25,6 +25,6 @@ This only needs to be done once, and when completed, run the backup.php script a
 
 Running the script subsequently, will add further archives to Dropbox, which can be done either manually, by Cron, by node-red, or by other means.
 
-By default, the script will retain 7 days of backups, although that can be changed in the config file, archives older than that criteria are automatically deleted both locally and remotely in Dropbox when the script in run again.
+By default, the script will retain 7 days of backups, although that can be changed in the settings.conf file, archives older than that criteria are automatically deleted both locally and remotely in Dropbox when the script in run again.
 
 *Many thanks to Andrea Fabrizi for his brilliant Dropbox_uploader script.*
