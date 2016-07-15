@@ -131,6 +131,10 @@
             import_phptimestore($feed->id,$emoncms_server,$emoncmsapikey,$engines['phptimestore']['datadir']);
         }
     }
+    
+    echo "\n\n\n";
+    echo "Now syncing archives to Dropbox\n";
+    echo "This will take several minutes - please be patient\n";
 
     // Run bash script
 
