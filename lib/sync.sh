@@ -26,7 +26,7 @@ rm -rf ../$tdir
 
 # Delete expired local archive files
 cd ../backups
-let keep=(24*60*$store)-30
+let keep=(24*60*$store)+30
 find ./*.tar.gz -type f -mmin +$keep -exec rm {} \;
 
 # Remove old Dropbox backups
