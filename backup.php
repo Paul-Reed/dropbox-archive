@@ -37,6 +37,11 @@
     print_r($conf);
     extract($conf);
 
+    //If script run on a emonpi, put OS into RW
+    if (file_exists("/home/pi/emonpi/rpi-rw")) {
+    $output = exec("/home/pi/emonpi/./rpi-rw");
+    }
+
     // On first run enter dropbox configuration
 
     if (!file_exists("/home/pi/.dropbox_uploader")) {
@@ -139,4 +144,9 @@
     // Run bash script
 
     $output = exec("lib/./sync.sh");
+
+    //If script run on a emonpi, put OS back into RO
+    if (file_exists("/home/pi/emonpi/rpi-ro")) {
+    $output = exec("/home/pi/emonpi/./rpi-ro");
+    }
 
