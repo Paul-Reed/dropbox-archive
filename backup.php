@@ -62,7 +62,6 @@
       "$tdir/phpfiwa",
       "$tdir/phptimeseries",
       "$tdir/phptimestore",
-      "$tdir/mysql",
       "$tdir/nodered"
     );
     $permissions = 0755;

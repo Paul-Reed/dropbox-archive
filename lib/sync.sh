@@ -9,7 +9,7 @@ pwd
 eval `egrep '^([a-zA-Z_]+)="(.*)"' ../settings.conf`
 
 # Dump DB file
-mysqldump --lock-tables --user=$dbuser --password=$dbpass $dbname > ../$tdir/mysql/$dbname-$date.sql
+mysqldump --lock-tables --user=$dbuser --password=$dbpass $dbname > ../$tdir/$dbname-$date.sql
 
 # Archive node-red
 if [ -d $NRdir -a $nodered = "Y" ];
