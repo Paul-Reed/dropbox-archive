@@ -61,9 +61,7 @@
       "$tdir/phpfina",
       "$tdir/phpfiwa",
       "$tdir/phptimeseries",
-      "$tdir/phptimestore",
-      "$tdir/mysql",
-      "$tdir/nodered"
+      "$tdir/phptimestore"
     );
     $permissions = 0755;
     foreach ($Createdir as $dir) {
