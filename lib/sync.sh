@@ -32,7 +32,7 @@ fi
 # Archive node-red
 if [ -d $NRdir -a $nodered = "Y" ];
 then
-cp -pr $NRdir $DIR/../$tdir
+cp -prL $NRdir $DIR/../$tdir
 fi
 
 # Prepare emoncms data archive and delete original
