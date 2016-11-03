@@ -41,7 +41,7 @@ ERROR_STATUS=0
 
 #Don't edit these...
 API_MIGRATE_V2="https://api.dropboxapi.com/1/oauth2/token_from_oauth1"
-API_LIST_FOLDER="https://api.dropboxapi.com/2/files/list_folder"
+API_LONGPOLL_FOLDER="https://notify.dropboxapi.com/2/files/list_folder/longpoll"
 API_CHUNKED_UPLOAD_START_URL="https://content.dropboxapi.com/2/files/upload_session/start"
 API_CHUNKED_UPLOAD_FINISH_URL="https://content.dropboxapi.com/2/files/upload_session/finish"
 API_CHUNKED_UPLOAD_APPEND_URL="https://content.dropboxapi.com/2/files/upload_session/append_v2"
@@ -51,7 +51,8 @@ API_DELETE_URL="https://api.dropboxapi.com/2/files/delete"
 API_MOVE_URL="https://api.dropboxapi.com/2/files/move"
 API_COPY_URL="https://api.dropboxapi.com/2/files/copy"
 API_METADATA_URL="https://api.dropboxapi.com/2/files/get_metadata"
-API_FOLDER_LIST_URL="https://api.dropboxapi.com/2/files/list_folder"
+API_LIST_FOLDER_URL="https://api.dropboxapi.com/2/files/list_folder"
+API_LIST_FOLDER_CONTINUE_URL="https://api.dropboxapi.com/2/files/list_folder/continue"
 API_ACCOUNT_INFO_URL="https://api.dropboxapi.com/2/users/get_current_account"
 API_ACCOUNT_SPACE_URL="https://api.dropboxapi.com/2/users/get_space_usage"
 API_MKDIR_URL="https://api.dropboxapi.com/2/files/create_folder"
@@ -64,7 +65,7 @@ RESPONSE_FILE="$TMP_DIR/du_resp_$RANDOM"
 CHUNK_FILE="$TMP_DIR/du_chunk_$RANDOM"
 TEMP_FILE="$TMP_DIR/du_tmp_$RANDOM"
 BIN_DEPS="sed basename date grep stat dd mkdir"
-VERSION="0.2"
+VERSION="1.0"
 
 umask 077
 
@@ -262,6 +263,7 @@ function usage
     echo -e "\t copy     <REMOTE_FILE/DIR> <REMOTE_FILE/DIR>"
     echo -e "\t mkdir    <REMOTE_DIR>"
     echo -e "\t list     [REMOTE_DIR]"
+    echo -e "\t monitor  [REMOTE_DIR] [TIMEOUT]"
     echo -e "\t share    <REMOTE_FILE>"
     echo -e "\t saveurl  <URL> <REMOTE_DIR>"
     echo -e "\t search   <QUERY>"
@@ -390,6 +392,11 @@ function normalize_path
 function db_stat
 {
     local FILE=$(normalize_path "$1")
+
+    if [[ $FILE == "/" ]]; then
+        echo "DIR"
+        return
+    fi
 
     #Checking if it's a file or a directory
     $CURL_BIN $CURL_ACCEPT_CERTIFICATES -X POST -L -s --show-error --globoff -i -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Content-Type: application/json" --data "{\"path\": \"$FILE\"}" "$API_METADATA_URL" 2> /dev/null
@@ -697,26 +704,23 @@ function db_download
             fi
         fi
 
-        #Getting folder content
-        $CURL_BIN $CURL_ACCEPT_CERTIFICATES -X POST -L -s --show-error --globoff -i -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Content-Type: application/json" --data "{\"path\": \"$SRC\", \"recursive\": false, \"include_deleted\": false}" "$API_FOLDER_LIST_URL" 2> /dev/null
-        check_http_response
+        if [[ $SRC == "/" ]]; then
+            SRC_REQ=""
+        else
+            SRC_REQ="$SRC"
+        fi
 
-        #Extracting directory content [...]
-        #and replacing "}, {" with "}\n{"
-        #I don't like this piece of code... but seems to be the only way to do this with SED, writing a portable code...
-        local DIR_CONTENT=$(sed -n 's/.*: \[{\(.*\)/\1/p' "$RESPONSE_FILE" | sed 's/}, *{/}\
-{/g')
-
-        #Extracting files and subfolders
-        TMP_DIR_CONTENT_FILE="${RESPONSE_FILE}_$RANDOM"
-        echo "$DIR_CONTENT" | sed -n 's/".tag": *"\([^"]*\).*"path_display": *"\([^"]*\).*/\2:\1/p' > $TMP_DIR_CONTENT_FILE
+        OUT_FILE=$(db_list_outfile "$SRC_REQ")
 
         #For each entry...
         while read -r line; do
 
             local FILE=${line%:*}
-            local TYPE=${line##*:}
+            local META=${line##*:}
+            local TYPE=${META%;*}
+            local SIZE=${META#*;}
 
+            #Removing unneeded /
             FILE=${FILE##*/}
 
             if [[ $TYPE == "file" ]]; then
@@ -725,9 +729,9 @@ function db_download
                 db_download "$SRC/$FILE" "$DEST_DIR"
             fi
 
-        done < $TMP_DIR_CONTENT_FILE
+        done < $OUT_FILE
 
-        rm -fr $TMP_DIR_CONTENT_FILE
+        rm -fr $OUT_FILE
 
     #It's a file
     elif [[ $TYPE == "FILE" ]]; then
@@ -1020,6 +1024,72 @@ function db_mkdir
     fi
 }
 
+#List a remote folder and returns the path to the file containing the output
+#$1 = Remote directory
+#$2 = Cursor (Optional)
+function db_list_outfile
+{
+
+    local DIR_DST="$1"
+    local HAS_MORE="false"
+    local CURSOR=""
+
+    if [[ -n "$2" ]]; then
+        CURSOR="$2"
+        HAS_MORE="true"
+    fi
+
+    OUT_FILE="$TMP_DIR/du_tmp_out_$RANDOM"
+
+    while (true); do
+
+        if [[ $HAS_MORE == "true" ]]; then
+            $CURL_BIN $CURL_ACCEPT_CERTIFICATES -X POST -L -s --show-error --globoff -i -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Content-Type: application/json" --data "{\"cursor\": \"$CURSOR\"}" "$API_LIST_FOLDER_CONTINUE_URL" 2> /dev/null
+        else
+            $CURL_BIN $CURL_ACCEPT_CERTIFICATES -X POST -L -s --show-error --globoff -i -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Content-Type: application/json" --data "{\"path\": \"$DIR_DST\",\"include_media_info\": false,\"include_deleted\": false,\"include_has_explicit_shared_members\": false}" "$API_LIST_FOLDER_URL" 2> /dev/null
+        fi
+
+        check_http_response
+
+        HAS_MORE=$(sed -n 's/.*"has_more": *\([a-z]*\).*/\1/p' "$RESPONSE_FILE")
+        CURSOR=$(sed -n 's/.*"cursor": *"\([^"]*\)".*/\1/p' "$RESPONSE_FILE")
+
+        #Check
+        if grep -q "^HTTP/1.1 200 OK" "$RESPONSE_FILE"; then
+
+            #Extracting directory content [...]
+            #and replacing "}, {" with "}\n{"
+            #I don't like this piece of code... but seems to be the only way to do this with SED, writing a portable code...
+            local DIR_CONTENT=$(sed -n 's/.*: \[{\(.*\)/\1/p' "$RESPONSE_FILE" | sed 's/}, *{/}\
+    {/g')
+
+            #Converting escaped quotes to unicode format
+            echo "$DIR_CONTENT" | sed 's/\\"/\\u0022/' > "$TEMP_FILE"
+
+            #Extracting files and subfolders
+            while read -r line; do
+
+                local FILE=$(echo "$line" | sed -n 's/.*"path_display": *"\([^"]*\)".*/\1/p')
+                local TYPE=$(echo "$line" | sed -n 's/.*".tag": *"\([^"]*\).*/\1/p')
+                local SIZE=$(convert_bytes $(echo "$line" | sed -n 's/.*"size": *\([0-9]*\).*/\1/p'))
+
+                echo -e "$FILE:$TYPE;$SIZE" >> "$OUT_FILE"
+
+            done < "$TEMP_FILE"
+
+            if [[ $HAS_MORE == "false" ]]; then
+                break
+            fi
+
+        else
+            return
+        fi
+
+    done
+
+    echo $OUT_FILE
+}
+
 #List remote directory
 #$1 = Remote directory
 function db_list
@@ -1032,89 +1102,159 @@ function db_list
         DIR_DST=""
     fi
 
-    $CURL_BIN $CURL_ACCEPT_CERTIFICATES -X POST -L -s --show-error --globoff -i -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Content-Type: application/json" --data "{\"path\": \"$DIR_DST\",\"include_media_info\": false,\"include_deleted\": false,\"include_has_explicit_shared_members\": false}" "$API_LIST_FOLDER" 2> /dev/null
-    check_http_response
-
-    #Check
-    if grep -q "^HTTP/1.1 200 OK" "$RESPONSE_FILE"; then
-
-        print "DONE\n"
-
-        #Extracting directory content [...]
-        #and replacing "}, {" with "}\n{"
-        #I don't like this piece of code... but seems to be the only way to do this with SED, writing a portable code...
-        local DIR_CONTENT=$(sed -n 's/.*: \[{\(.*\)/\1/p' "$RESPONSE_FILE" | sed 's/}, *{/}\
-{/g')
-
-        #Converting escaped quotes to unicode format
-        echo "$DIR_CONTENT" | sed 's/\\"/\\u0022/' > "$TEMP_FILE"
-
-        #Extracting files and subfolders
-        rm -fr "$RESPONSE_FILE"
-        while read -r line; do
-
-            local FILE=$(echo "$line" | sed -n 's/.*"path_display": *"\([^"]*\)".*/\1/p')
-            local TYPE=$(echo "$line" | sed -n 's/.*".tag": *"\([^"]*\).*/\1/p')
-            local SIZE=$(convert_bytes $(echo "$line" | sed -n 's/.*"size": *\([0-9]*\).*/\1/p'))
-
-            echo -e "$FILE:$TYPE;$SIZE" >> "$RESPONSE_FILE"
-
-        done < "$TEMP_FILE"
-
-        #Looking for the biggest file size
-        #to calculate the padding to use
-        local padding=0
-        while read -r line; do
-            local FILE=${line%:*}
-            local META=${line##*:}
-            local SIZE=${META#*;}
-
-            if [[ ${#SIZE} -gt $padding ]]; then
-                padding=${#SIZE}
-            fi
-        done < "$RESPONSE_FILE"
-
-        #For each entry, printing directories...
-        while read -r line; do
-
-            local FILE=${line%:*}
-            local META=${line##*:}
-            local TYPE=${META%;*}
-            local SIZE=${META#*;}
-
-            #Removing unneeded /
-            FILE=${FILE##*/}
-
-            if [[ $TYPE == "folder" ]]; then
-                FILE=$(echo -e "$FILE")
-                $PRINTF " [D] %-${padding}s %s\n" "$SIZE" "$FILE"
-            fi
-
-        done < "$RESPONSE_FILE"
-
-        #For each entry, printing files...
-        while read -r line; do
-
-            local FILE=${line%:*}
-            local META=${line##*:}
-            local TYPE=${META%;*}
-            local SIZE=${META#*;}
-
-            #Removing unneeded /
-            FILE=${FILE##*/}
-
-            if [[ $TYPE == "file" ]]; then
-                FILE=$(echo -e "$FILE")
-                $PRINTF " [F] %-${padding}s %s\n" "$SIZE" "$FILE"
-            fi
-
-        done < "$RESPONSE_FILE"
-
-
-    else
+    OUT_FILE=$(db_list_outfile "$DIR_DST")
+    if [ -z "$OUT_FILE" ]; then
         print "FAILED\n"
         ERROR_STATUS=1
+        return
+    else
+        print "DONE\n"
     fi
+
+    #Looking for the biggest file size
+    #to calculate the padding to use
+    local padding=0
+    while read -r line; do
+        local FILE=${line%:*}
+        local META=${line##*:}
+        local SIZE=${META#*;}
+
+        if [[ ${#SIZE} -gt $padding ]]; then
+            padding=${#SIZE}
+        fi
+    done < "$OUT_FILE"
+
+    #For each entry, printing directories...
+    while read -r line; do
+
+        local FILE=${line%:*}
+        local META=${line##*:}
+        local TYPE=${META%;*}
+        local SIZE=${META#*;}
+
+        #Removing unneeded /
+        FILE=${FILE##*/}
+
+        if [[ $TYPE == "folder" ]]; then
+            FILE=$(echo -e "$FILE")
+            $PRINTF " [D] %-${padding}s %s\n" "$SIZE" "$FILE"
+        fi
+
+    done < "$OUT_FILE"
+
+    #For each entry, printing files...
+    while read -r line; do
+
+        local FILE=${line%:*}
+        local META=${line##*:}
+        local TYPE=${META%;*}
+        local SIZE=${META#*;}
+
+        #Removing unneeded /
+        FILE=${FILE##*/}
+
+        if [[ $TYPE == "file" ]]; then
+            FILE=$(echo -e "$FILE")
+            $PRINTF " [F] %-${padding}s %s\n" "$SIZE" "$FILE"
+        fi
+
+    done < "$OUT_FILE"
+
+    rm -fr "$OUT_FILE"
+}
+
+#Longpoll remote directory only once
+#$1 = Timeout
+#$2 = Remote directory
+function db_monitor_nonblock
+{
+    local TIMEOUT=$1
+    local DIR_DST=$(normalize_path "$2")
+
+    if [[ "$DIR_DST" == "/" ]]; then
+        DIR_DST=""
+    fi
+
+    $CURL_BIN $CURL_ACCEPT_CERTIFICATES -X POST -L -s --show-error --globoff -i -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Content-Type: application/json" --data "{\"path\": \"$DIR_DST\",\"include_media_info\": false,\"include_deleted\": false,\"include_has_explicit_shared_members\": false}" "$API_LIST_FOLDER_URL" 2> /dev/null
+    check_http_response
+
+    if grep -q "^HTTP/1.1 200 OK" "$RESPONSE_FILE"; then
+
+        local CURSOR=$(sed -n 's/.*"cursor": *"\([^"]*\)".*/\1/p' "$RESPONSE_FILE")
+
+        $CURL_BIN $CURL_ACCEPT_CERTIFICATES -X POST -L -s --show-error --globoff -i -o "$RESPONSE_FILE" --header "Content-Type: application/json" --data "{\"cursor\": \"$CURSOR\",\"timeout\": ${TIMEOUT}}" "$API_LONGPOLL_FOLDER" 2> /dev/null
+        check_http_response
+
+        if grep -q "^HTTP/1.1 200 OK" "$RESPONSE_FILE"; then
+            local CHANGES=$(sed -n 's/.*"changes" *: *\([a-z]*\).*/\1/p' "$RESPONSE_FILE")
+        else
+            ERROR_MSG=$(grep "Error in call" "$RESPONSE_FILE")
+            print "FAILED to longpoll (http error): $ERROR_MSG\n"
+            ERROR_STATUS=1
+            return 1
+        fi
+
+        if [[ -z "$CHANGES" ]]; then
+            print "FAILED to longpoll (unexpected response)\n"
+            ERROR_STATUS=1
+            return 1
+        fi
+
+        if [ "$CHANGES" == "true" ]; then
+
+            OUT_FILE=$(db_list_outfile "$DIR_DST" "$CURSOR")
+
+            if [ -z "$OUT_FILE" ]; then
+                print "FAILED to list changes\n"
+                ERROR_STATUS=1
+                return
+            fi
+
+            #For each entry, printing directories...
+            while read -r line; do
+
+                local FILE=${line%:*}
+                local META=${line##*:}
+                local TYPE=${META%;*}
+                local SIZE=${META#*;}
+
+                #Removing unneeded /
+                FILE=${FILE##*/}
+
+                if [[ $TYPE == "folder" ]]; then
+                    FILE=$(echo -e "$FILE")
+                    $PRINTF " [D] %s\n" "$FILE"
+                elif [[ $TYPE == "file" ]]; then
+                    FILE=$(echo -e "$FILE")
+                    $PRINTF " [F] %s %s\n" "$SIZE" "$FILE"
+                elif [[ $TYPE == "deleted" ]]; then
+                    FILE=$(echo -e "$FILE")
+                    $PRINTF " [-] %s\n" "$FILE"
+                fi
+
+            done < "$OUT_FILE"
+
+            rm -fr "$OUT_FILE"
+        fi
+
+    else
+        ERROR_STATUS=1
+        return 1
+    fi
+
+}
+
+#Longpoll continuously remote directory
+#$1 = Timeout
+#$2 = Remote directory
+function db_monitor
+{
+    local TIMEOUT=$1
+    local DIR_DST=$(normalize_path "$2")
+
+    while (true); do
+        db_monitor_nonblock "$TIMEOUT" "$2"
+    done
 }
 
 #Share remote file
@@ -1442,6 +1582,26 @@ case $COMMAND in
         fi
 
         db_list "/$DIR_DST"
+
+    ;;
+
+    monitor)
+
+        DIR_DST=$ARG1
+        TIMEOUT=$ARG2
+
+        #Checking DIR_DST
+        if [[ $DIR_DST == "" ]]; then
+            DIR_DST="/"
+        fi
+
+        print " > Monitoring \"$DIR_DST\" for changes...\n"
+
+        if [[ -n $TIMEOUT ]]; then
+            db_monitor_nonblock $TIMEOUT "/$DIR_DST"
+        else
+            db_monitor 60 "/$DIR_DST"
+        fi
 
     ;;
 
