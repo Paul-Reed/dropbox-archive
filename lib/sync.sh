@@ -1,5 +1,6 @@
 #!/bin/bash
 
+shopt -s extglob
 date=$(date +"%d_%m_%Y_%H%M")
 DIR="$(dirname $(readlink -f $0))"
 cd $DIR
@@ -32,7 +33,7 @@ fi
 # Archive node-red
 if [ -d $NRdir -a $nodered = "Y" ];
 then
-cp -prL $NRdir $DIR/../$tdir
+rsync -a $NRdir --exclude 'node_modules' ../$tdir
 fi
 
 # Prepare emoncms data archive and delete original
